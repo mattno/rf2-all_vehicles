@@ -21,12 +21,12 @@ and all cars with the same type as the one last driven will be updated to use th
 ## Installation
 
 1. Download node and install.
-2. Place script ```all_vehicles.js``` anywhere you like (ensure you have write permissions though).
-3. Open a command prompt, create a shortcut, or whatever, and run the script using node.
+2. Place the script ```all_vehicles.js``` anywhere you like (ensure you have write permissions though).
+3. Open a command prompt and CD to the location of the script, create a shortcut, or whatever, and run the script using ```node```.
 
 ## Configuration
 
-A configuration file, ```all_vehecles.JSON```, placed in the same folder as the script can be used to tweak the process and set the location of your rFactor2 player directory and the strategy used to find same cars. 
+A configuration file, ```all_vehicles.JSON```, placed in the same folder as the script can be used to tweak the process and set the location of your rFactor2 player directory and the strategy used to find same cars. 
 
 ```
 {
@@ -36,6 +36,18 @@ A configuration file, ```all_vehecles.JSON```, placed in the same folder as the 
 ```
 
 Copy the ```all_vehicles.example.JSON``` as ```all_vehicles.JSON``` and change the content as you see fit - most probably you should change the location of ```playerDir```. 
+
+### Similar Cars Strategy
+
+Cars are installed under ```Vehicles``` in your rFactor2 installation folder.
+
+* ```true``` (default) 
+  when ```true``` (default) same cars are those having having the same version - i.e. when a new version is
+  otherwise the version of  
+* ```false``` 
+
+
+
 
 ## Executable 
 
