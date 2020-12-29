@@ -44,7 +44,7 @@ Cars are installed under ```Vehicles``` in your rFactor2 installation folder.
 * ```SAME_VERSION_ONLY``` (default) 
   when ```SAME_VERSION_ONLY``` same cars are those having having the same version - i.e. when a new version is
   otherwise
-* ```IGNORE_VERSION``` ignore the version of the car, and applies the settings the all cars, no matter its version. 
+* ```IGNORE_VERSION``` ignore the version of the car, and apply last settings to all cars of same brand/type (gnoring its version). 
 
 ## Executable 
 
