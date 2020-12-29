@@ -21,7 +21,7 @@ const SCOPES = {
 };
 const CONFIG = loadConfig();
 const ALL_VEHICLES_INI = path.join(CONFIG.playerDir, 'all_vehicles.ini');
-
+const PLAYER_JSON = path.join(CONFIG.playerDir, 'player.JSON');
 
 // --- [ PARSE ARGUMENTS ]---------------------------------------------------
 if (process.argv.length > 2 && process.argv[2] === '--history' ) {
@@ -30,6 +30,9 @@ if (process.argv.length > 2 && process.argv[2] === '--history' ) {
 } else if (process.argv.length > 2 && process.argv[2] === '--reapply' ) {
 
 
+} else if (process.argv.length > 2 && process.argv[2] === '--watch' ) {
+
+    watchAndUpdateLastVehicleUsed()
 
 } else {
 
@@ -65,22 +68,61 @@ function loadConfig() {
     }
 }
 
+const logger = (function() {
+    function makeArgs(arguments) {
+        const args = Array.prototype.slice.call(arguments);
+        args.unshift(`[${new Date().toISOString()}]`);
+        return args;
+    }
+    return {
+        debug() {
+            console.log.apply(console, makeArgs(arguments));
+        },
+        info() {
+            console.info.apply(console, makeArgs(arguments));
+        }
+    };
+})();
+
+
+
+async function watchAndUpdateLastVehicleUsed() {
+    let updateTimer;
+    fs.watch(PLAYER_JSON, (eventType, filename) => {
+        logger.info(`'${PLAYER_JSON}' => ${eventType}, ${filename}`);
+        if (updateTimer) {
+            clearTimeout(updateTimer);
+        }
+        updateTimer = setTimeout(() => {
+            logger.info(`updating...`);
+            updateLastVehicleUsed().then(() => {
+                updateTimer = undefined;
+            })
+        }, 10000)
+    });
+    fs.watch(ALL_VEHICLES_INI, (eventType, filename) => {
+        logger.info(`'${ALL_VEHICLES_INI}' => ${eventType}, ${filename}`);
+    });
+}
+
+
 async function updateLastVehicleUsed() {
     const [ allVehicles, vehicaleFile ] = await Promise.all([ loadAllVehicles(), findVehicleFile() ]);
     const vehicle = allVehicles.find(vehicle => vehicle.some(line => line.includes(`File=${vehicaleFile}`)));
+    const sameVehicles = findSameVehicles(vehicle, allVehicles);
 
-    console.info(`Last vehicle used: ${getFileKey(vehicle)}, ${getVehicleId(vehicle)}`);
-    console.info(`Read ${allVehicles.length} vehicles.`);
-
-    const appliedTo = applyTo(vehicle, findSameVehicles(vehicle, allVehicles));
+    logger.info(`Last vehicle used: ${getFileKey(vehicle)}, ${getVehicleId(vehicle)}`);
+    logger.info(`Read ${allVehicles.length} vehicles. ${sameVehicles.length} of same kind as last vehicle used.`);
+    const appliedTo = applyTo(vehicle, sameVehicles);
     if (appliedTo.length) {
-        console.debug('Applied to: ', appliedTo.map(v => getVehicleId(v)));
+        logger.info('Applied to: ', appliedTo.map(v => getVehicleId(v)));
         await saveVehicles(allVehicles, ALL_VEHICLES_INI);
         await saveVehiclesHistory(vehicle, allVehicles, appliedTo);
-        console.info(`\`${ALL_VEHICLES_INI}' updated.`);
+        logger.info(`\`${ALL_VEHICLES_INI}' updated.`);
     } else {
-        console.info("Nothing to apply (no change/already applied)!");
+        logger.info("Nothing to apply (no change/already applied)!");
     }
+    return appliedTo;
 }
 
 async function listHistory() {

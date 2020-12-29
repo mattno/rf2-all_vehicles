@@ -1,4 +1,10 @@
 {
   "name": "all_vehicles",
-  "private": true
+  "version": "0.2",
+  "private": true,
+  "main": "all_vehicles.js",
+  "scripts": {
+    "start": "node all_vehicles.js",
+    "package": "yarn dlx pkg -t node12-win -o all_vehicles.exe all_vehicles.js"
+  }
 }
