@@ -16,7 +16,7 @@ After you exit rFactor 2 just run this script using nodejs as
 
 ```node all_vehicles.js```
 
-and all cars with the same type as the one last driven will be updated to use the same settiings for mirrors and FFB multiplier.
+and all cars with the same type as the one last driven will be updated to use the same settings for mirrors and FFB multiplier.
 
 ## Installation
 
@@ -31,7 +31,7 @@ A configuration file, ```all_vehicles.JSON```, placed in the same folder as the 
 ```
 {
     "playerDir": "<path>/<to>/playerdir>",
-    "exactVersion": true
+    "scope": "SAME_VERSION_ONLY" | "IGNORE_VERSION"
 }
 ```
 
@@ -41,13 +41,10 @@ Copy the ```all_vehicles.example.JSON``` as ```all_vehicles.JSON``` and change t
 
 Cars are installed under ```Vehicles``` in your rFactor2 installation folder.
 
-* ```true``` (default) 
-  when ```true``` (default) same cars are those having having the same version - i.e. when a new version is
-  otherwise the version of  
-* ```false``` 
-
-
-
+* ```SAME_VERSION_ONLY``` (default) 
+  when ```SAME_VERSION_ONLY``` same cars are those having having the same version - i.e. when a new version is
+  otherwise
+* ```IGNORE_VERSION``` ignore the version of the car, and applies the settings the all cars, no matter its version. 
 
 ## Executable 
 
