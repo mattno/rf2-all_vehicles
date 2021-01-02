@@ -16,7 +16,17 @@ After you exit rFactor 2 just run this script using nodejs as
 
 ```node all_vehicles.js```
 
-and all cars with the same type as the one last driven will be updated to use the same settiings for mirrors and FFB multiplier.
+and all cars with the same type as the one last driven will be updated to use the same settings for mirrors and FFB multiplier.
+This means you should exit rFactor 2 before selecting a new car. To be able to go in and out from sessions with diffrent cars you can
+start as
+
+```node all_vehicles.js --watch```
+
+which will watch when a new car is chosen, and apply changes to similar cars, with a small delay. Teoretically this should work when 
+rFactor 2 is still running, but it seams rFactor 2 has the ```all_vehicles``` cached, and will overwrite the changes written by
+```all_vehilces.js```. 
+
+TODO: wait for rFactor 2 to exit, and then apply changes for all cars driven while rFactor 2 was running.
 
 ## Installation
 
@@ -31,7 +41,7 @@ A configuration file, ```all_vehicles.JSON```, placed in the same folder as the 
 ```
 {
     "playerDir": "<path>/<to>/playerdir>",
-    "exactVersion": true
+    "scope": "SAME_VERSION_ONLY" | "IGNORE_VERSION"
 }
 ```
 
@@ -41,13 +51,10 @@ Copy the ```all_vehicles.example.JSON``` as ```all_vehicles.JSON``` and change t
 
 Cars are installed under ```Vehicles``` in your rFactor2 installation folder.
 
-* ```true``` (default) 
-  when ```true``` (default) same cars are those having having the same version - i.e. when a new version is
-  otherwise the version of  
-* ```false``` 
-
-
-
+* ```SAME_VERSION_ONLY``` (default) 
+  when ```SAME_VERSION_ONLY``` same cars are those having having the same version - i.e. when a new version is
+  otherwise
+* ```IGNORE_VERSION``` ignore the version of the car, and apply last settings to all cars of same brand/type (gnoring its version). 
 
 ## Executable 
 
