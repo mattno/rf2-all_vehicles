@@ -1,5 +1,5 @@
 /*
- * (c) mattno
+ * (c) mattno - https://github.com/mattno/rf2-all_vehicles
  */
 
 
@@ -7,16 +7,39 @@
 
 const fs = require('fs');
 const path = require('path');
-const { listenerCount } = require('process');
 const { promisify } = require('util');
-
 const fsp = {
     readFile: promisify(fs.readFile),
     writeFile: promisify(fs.writeFile)
 }
+const { snapshot } = require("process-list");
+const sleep = require('sleep-promise');
+
+
+const logger = (function() {
+    function makeArgs(arguments) {
+        const args = Array.prototype.slice.call(arguments);
+        args.unshift(`[${new Date().toISOString()}]`);
+        return args;
+    }
+    return {
+        debug() {
+            console.log.apply(console, makeArgs(arguments));
+        },
+        info() {
+            console.info.apply(console, makeArgs(arguments));
+        },
+        warn() {
+            console.warn.apply(console, makeArgs(arguments));
+        }
+    };
+})();
+
+
+
 
 const SCOPES = {
-  SAME_VERSION_ONlY: -1,
+  SAME_VERSION_ONLY: -1,
   IGNORE_VERSION: -2
 };
 const CONFIG = loadConfig();
@@ -31,9 +54,7 @@ if (process.argv.length > 2 && process.argv[2] === '--history' ) {
 
 
 } else if (process.argv.length > 2 && process.argv[2] === '--watch' ) {
-
     watchAndUpdateLastVehicleUsed()
-
 } else {
 
   updateLastVehicleUsed()
@@ -68,61 +89,127 @@ function loadConfig() {
     }
 }
 
-const logger = (function() {
-    function makeArgs(arguments) {
-        const args = Array.prototype.slice.call(arguments);
-        args.unshift(`[${new Date().toISOString()}]`);
-        return args;
-    }
-    return {
-        debug() {
-            console.log.apply(console, makeArgs(arguments));
-        },
-        info() {
-            console.info.apply(console, makeArgs(arguments));
-        }
-    };
-})();
+
+
 
 
 
 async function watchAndUpdateLastVehicleUsed() {
-    let updateTimer;
-    fs.watch(PLAYER_JSON, (eventType, filename) => {
-        logger.info(`'${PLAYER_JSON}' => ${eventType}, ${filename}`);
-        if (updateTimer) {
-            clearTimeout(updateTimer);
+    const EXE = 'rFactor2.exe';
+    let rf2;
+
+    logger.info(`watch - waiting for ${EXE}...`);
+    do {
+        const tasks = await snapshot('pid', 'name', 'path');
+        rf2 = tasks.find(t => t.name.toLowerCase() === EXE.toLowerCase())
+        if (!rf2) await sleep(10000);
+    } while (!rf2)
+    logger.info(`watch - ${EXE} is now running.`);
+    let vehicleFilesUsed = [];
+    let playerJsonUpdated = undefined;
+    let allVehiclesIniUpdated = undefined
+    let addLastVehicleUsedDelay = undefined;
+
+    const playerJsonWatch = fs.watch(PLAYER_JSON, (eventType, filename) => {
+        //logger.debug(`watch - '${PLAYER_JSON}' => ${eventType}, ${filename}`);
+        playerJsonUpdated = new Date().getTime();
+        addLastVehilceUsed();
+    });
+    const allVehiclesIniWatch = fs.watch(ALL_VEHICLES_INI, (eventType, filename) => {
+        //logger.debug(`watch - '${ALL_VEHICLES_INI}' => ${eventType}, ${filename}`);
+        allVehiclesIniUpdated = new Date().getTime();
+        addLastVehilceUsed();
+    });
+
+    const rf2WaitToEnd = setInterval(async () => {
+        const tasks = await snapshot('pid', 'name', 'path');
+        rf2 = tasks.find(t => t.name.toLowerCase() === EXE.toLowerCase());
+        if (!rf2) {
+            logger.info(`watch - ${EXE} no longer running.`);
+            clearInterval(rf2WaitToEnd);
+            playerJsonWatch.close();
+            allVehiclesIniWatch.close();
+
+            // update all cars used
+            const [ allVehiclesHistory, allVehicles]  = await Promise.all([
+                 loadAllVehiclesHistory(), loadAllVehicles() 
+            ]);
+            const vehiclesUsed = vehicleFilesUsed
+                .map(vehicleFile => allVehicles.find(vehicle => vehicle.some(line => line.includes(`File=${vehicleFile}`))))
+                .filter(v => !!v);
+
+            logger.info(`watch - Performing updates for`, vehiclesUsed.map(v => `${getFileKey(v)}, ${getVehicleId(v)}`));
+            let total = 0;
+            vehiclesUsed.forEach(vehicle => {
+                const result = updateVehicle(vehicle, allVehicles);
+                if (result.appliedTo.length) {
+                    addToAllVechilesHistory(allVehiclesHistory, vehicle, result.appliedTo);
+                }
+                total += result.appliedTo.length;
+            });
+            logger.info(`watch - total ${total} vehicles updated.`);
+            if (total > 0) {
+                await Promise.all( [saveVehicles(allVehicles, ALL_VEHICLES_INI), saveAllVehilcesHistory(allVehiclesHistory) ]);
+                logger.info(`\`${ALL_VEHICLES_INI}' updated.`);
+            }
+            // 
+            watchAndUpdateLastVehicleUsed();
         }
-        updateTimer = setTimeout(() => {
-            logger.info(`updating...`);
-            updateLastVehicleUsed().then(() => {
-                updateTimer = undefined;
-            })
-        }, 10000)
-    });
-    fs.watch(ALL_VEHICLES_INI, (eventType, filename) => {
-        logger.info(`'${ALL_VEHICLES_INI}' => ${eventType}, ${filename}`);
-    });
+    }, 20000);
+
+    function addLastVehilceUsed() {
+        if (!okToAddLastVechileUsed()) return;
+        if (addLastVehicleUsedDelay) { 
+            logger.info(`watch - file changes during stabilizing, re-stabilizing.`);
+            clearTimeout(addLastVehicleUsedDelay); 
+        } else {
+            logger.info(`watch - waiting 3 seconds for file changes to stabilize...`);
+        }
+        addLastVehicleUsedDelay = setTimeout(async () => {
+            const vehicleFile = await findVehicleFile();
+            vehicleFilesUsed = [
+                vehicleFile, // apply changes for latest file first
+                ...vehicleFilesUsed.filter(vf => vehicleFile !== vf)
+            ];
+            logger.info(`watch - added '${getVehicleNormalized(vehicleFile)}' to vehicles used`, vehicleFilesUsed);
+            addLastVehicleUsedDelay = undefined;
+        }, 3000);
+    }
+    function okToAddLastVechileUsed() {
+        if (!playerJsonUpdated) return false;
+        if (!allVehiclesIniUpdated) return false;
+        return (Math.abs(playerJsonUpdated - allVehiclesIniUpdated) < 2000);
+    }
+    
 }
 
-
 async function updateLastVehicleUsed() {
-    const [ allVehicles, vehicaleFile ] = await Promise.all([ loadAllVehicles(), findVehicleFile() ]);
-    const vehicle = allVehicles.find(vehicle => vehicle.some(line => line.includes(`File=${vehicaleFile}`)));
-    const sameVehicles = findSameVehicles(vehicle, allVehicles);
-
-    logger.info(`Last vehicle used: ${getFileKey(vehicle)}, ${getVehicleId(vehicle)}`);
-    logger.info(`Read ${allVehicles.length} vehicles. ${sameVehicles.length} of same kind as last vehicle used.`);
-    const appliedTo = applyTo(vehicle, sameVehicles);
-    if (appliedTo.length) {
-        logger.info('Applied to: ', appliedTo.map(v => getVehicleId(v)));
+    const [ allVehicles, vehicleFile ] = await Promise.all([ loadAllVehicles(), findVehicleFile() ]);
+    const vehicle = allVehicles.find(vehicle => vehicle.some(line => line.includes(`File=${vehicleFile}`)));
+    const result = updateVehicle(vehicle, allVehicles);
+    if (result.appliedTo.length) {
         await saveVehicles(allVehicles, ALL_VEHICLES_INI);
         await saveVehiclesHistory(vehicle, allVehicles, appliedTo);
         logger.info(`\`${ALL_VEHICLES_INI}' updated.`);
+    }
+    return result;
+}
+
+function updateVehicle(vehicle, allVehicles) {
+    const sameVehicles = findSameVehicles(vehicle, allVehicles);
+    logger.info(`Vehicle: ${getFileKey(vehicle)}, ${getVehicleId(vehicle)}`);
+    logger.info(`Total ${allVehicles.length} vehicles. ${sameVehicles.length} same kind as vehicle.`);
+    const appliedTo = applyTo(vehicle, sameVehicles);
+    if (appliedTo.length) {
+        logger.info('Applied to: ', appliedTo.map(v => getVehicleId(v)));
     } else {
         logger.info("Nothing to apply (no change/already applied)!");
     }
-    return appliedTo;
+    return {
+        lastVehicle: vehicle,
+        sameVehicles: sameVehicles,
+        appliedTo: appliedTo
+    };
 }
 
 async function listHistory() {
@@ -138,16 +225,25 @@ function loadAllVehiclesHistory() {
         : [];
 }
 
+function saveAllVehilcesHistory(allVehiclesHistory) {
+    fs.writeFileSync('all_vehicles-history.JSON', JSON.stringify(allVehiclesHistory, null, 4));
+}
+
+function addToAllVechilesHistory(allVehiclesHistory, vehicle, appliedTo) {
+    const statAllVehicles = fs.statSync(ALL_VEHICLES_INI);
+    allVehiclesHistory.push({
+        date: statAllVehicles.mtime.toISOString(),
+        vehicle: vehicle,
+        appliedTo: appliedTo.map(getVehicleId)
+    })
+}
+
 async function saveVehiclesHistory(vehicle, allVehicles, appliedTo) {
-    const all_vehicles_history = loadAllVehiclesHistory();
-    const stat_all_vehicles = fs.statSync(ALL_VEHICLES_INI);
-    if (!all_vehicles_history.length || fs.statSync('all_vehicles-history.JSON').mtime < stat_all_vehicles.mtime) {
-        all_vehicles_history.push({
-            date: stat_all_vehicles.mtime.toISOString(),
-            vehicle: vehicle,
-            appliedTo: appliedTo.map(getVehicleId)
-        })
-        fs.writeFileSync('all_vehicles-history.JSON', JSON.stringify(all_vehicles_history, null, 4));
+    const allVehiclesHistory = loadAllVehiclesHistory();
+    const statAllVehicles = fs.statSync(ALL_VEHICLES_INI);
+    if (!allVehiclesHistory.length || fs.statSync('all_vehicles-history.JSON').mtime < statAllVehicles.mtime) {
+        addToAllVechilesHistory(allVehiclesHistory, vehicle, appliedTo);
+        saveAllVehilcesHistory(allVehiclesHistory);
     }
 }
 
@@ -155,37 +251,50 @@ async function findVehicleFile() {
     const playerJson = path.join(CONFIG.playerDir, 'player.JSON');
     const data = await fsp.readFile(playerJson, 'ascii')
     const lines = data.split(/\r?\n/);
-    const vehicaleFile = lines.map((line, index) => {
-        const matches = line.match(/^.*"Vehicle File":("[^"]+").*$/);
-        return matches && matches[1].replace(/\\\\/g, '\\');
-    }).find(match => !!match);
+    const vehicaleFile = lines
+        .map(line => {
+            const matches = line.match(/^.*"Vehicle File":("[^"]+").*$/);
+            return matches && matches[1].replace(/\\\\/g, '\\');
+        })
+        .find(match => !!match);
     return vehicaleFile;
 }
+
+
+function getVehicleNormalized(vehicleFile) {
+    const parts = vehicleFile.split('\\'); 
+    return parts.slice(parts.map(p => p.toUpperCase()).indexOf('VEHICLES')+1).join('\\'); 
+}
+
+function getVehicleKey(vehicleFile) {
+    const parts = vehicleFile.split('\\').slice(0, SCOPES[CONFIG.scope]); // folder levels above actual car
+    return parts.slice(parts.map(p => p.toUpperCase()).indexOf('VEHICLES')+1).join('\\'); 
+}
+
 
 function getVehicleId(vehicle) {
     return vehicle.find(row => row.toUpperCase().startsWith('ID='));
 }
 
-function getVehicleKey(vehicleFile) {
-    const parts = vehicleFile.split('\\').slice(0, SCOPES[CONFIG.scope]); // folder levels above actual car
-    return parts.slice( parts.map(p => p.toUpperCase()).indexOf('VEHICLES')+1).join('\\'); 
-}
 function getFileKey(vehicle) {   
     return getVehicleKey(vehicle.find(row => row.toUpperCase().startsWith('FILE=')));
 }
 
 function findSameVehicles(fromVehicle, allVehicles) {
+    const fromVehicleId = getVehicleId(fromVehicle);
     const fromFileKey = getFileKey(fromVehicle);
-    return allVehicles.filter(vehicle => fromVehicle !== vehicle && fromFileKey === getFileKey(vehicle));
+    return allVehicles.filter(vehicle =>
+        fromVehicle !== vehicle
+        && fromFileKey === getFileKey(vehicle)
+        && fromVehicleId !== getVehicleId(vehicle));
 }
 
 function applyTo(fromVehicle, sameVehicles) {
-    const parameters =
-        ['Seat=', 'SeatPitch=', 'RearviewSize=', 'Mirror=', 'MirrorPhysical=',
-            'MirrorLeft=', 'MirrorCenter=', 'MirrorRight=', 'FFBSteeringTorqueMult=']
-
+    const parameters = [
+        'Seat=', 'SeatPitch=', 'RearviewSize=', 'Mirror=', 'MirrorPhysical=',
+        'MirrorLeft=', 'MirrorCenter=', 'MirrorRight=', 'FFBSteeringTorqueMult='
+    ];
     const appliedTo = sameVehicles.map(vehicle => {
-        const id = vehicle.find(row => row.startsWith('ID='));
         const appliedRows = parameters.map(param => {
             const fromRow = fromVehicle.find(row => row.startsWith(param));
             const vehicleRow = vehicle.find(row => row.startsWith(param));
@@ -227,4 +336,3 @@ async function loadAllVehicles() {
     }, []);
     return allVehicles;
 }
-

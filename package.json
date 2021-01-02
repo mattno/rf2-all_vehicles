@@ -5,6 +5,12 @@
   "main": "all_vehicles.js",
   "scripts": {
     "start": "node all_vehicles.js",
+    "start:watch": "node all_vehicles.js --watch",
     "package": "yarn dlx pkg -t node12-win -o all_vehicles.exe all_vehicles.js"
+  },
+  "dependencies": {
+    "@yarnpkg/pnpify": "^2.4.0",
+    "process-list": "^2.0.0",
+    "sleep-promise": "^9.0.0"
   }
 }
