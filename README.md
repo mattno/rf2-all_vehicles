@@ -1,38 +1,46 @@
 # rf2-all_vehicles
 
-Use last driven car to resue mirror seetings and FFB multipler for all other cars of same kind.
+Use last driven car to reuse mirror, and FFB multipler settings, for all other cars of same kind.
 
 ## Bakground
 
-Adjusting mirrors and/or FFB multiplier is only saved for the current vehicle/livary combination. I.e. when selecting the same car but a different livery you need to set the mirrors and FFB once again.
+Adjusting _mirrors_ and/or _FFB multiplier_ is only saved for the current vehicle/livery combination. I.e. when selecting the same car but a different livery you need to set the mirrors and FFB once again.
 
 ## Solution
 
-Extract the last driven cars' settings and apply/copy those settings to the all other cars of the same type.
+Monitor the last driven car's settings and apply/copy those settings to the all other cars of the same type.
 
 ## Usage
 
-After you exit rFactor 2 just run this script using nodejs as
+After you exit rFactor 2 just run this script using ```node```  as
 
 ```node all_vehicles.js```
 
 and all cars with the same type as the one last driven will be updated to use the same settings for mirrors and FFB multiplier.
-This means you should exit rFactor 2 before selecting a new car. To be able to go in and out from sessions with diffrent cars you can
-start as
+
+This means you must exit rFactor 2 before selecting a new car. To be able to go in and out from sessions with diffrent cars you can start as
 
 ```node all_vehicles.js --watch```
 
-which will watch when a new car is chosen, and apply changes to similar cars, with a small delay. Teoretically this should work when 
-rFactor 2 is still running, but it seams rFactor 2 has the ```all_vehicles``` cached, and will overwrite the changes written by
-```all_vehilces.js```. 
+which will watch when a new car is chosen, and add it to a queue. When rFactor 2 is ended, the settings of used cars will be applied.
 
-TODO: wait for rFactor 2 to exit, and then apply changes for all cars driven while rFactor 2 was running.
+### Applied History
+
+A history file, ```all_vehicles-history.JSON``` is used to track updated vehicles (no real use at the moment, only as log)
 
 ## Installation
 
-1. Download node and install.
-2. Place the script ```all_vehicles.js``` anywhere you like (ensure you have write permissions though).
-3. Open a command prompt and CD to the location of the script, create a shortcut, or whatever, and run the script using ```node```.
+1. Download ```node``` and install (if you don't have  it installed already)
+2. Also you should install ```yarn```, or exchange ```yarn``` for ```npm``` below.
+2. Download (or fork) the sources, including ```all_vehicles.js``` and place anywhere you like (ensure you have write permissions in this directory though).
+3. Open a command prompt and CD to the location of the script, and run 
+
+   ```yarn install```
+
+## Run
+
+1. Create a shortcut or use a terminal, or whatever.
+2. Ensure to run using node, e.g. ```node all_vehicles.js [--watch]```
 
 ## Configuration
 
@@ -45,19 +53,23 @@ A configuration file, ```all_vehicles.JSON```, placed in the same folder as the 
 }
 ```
 
-Copy the ```all_vehicles.example.JSON``` as ```all_vehicles.JSON``` and change the content as you see fit - most probably you should change the location of ```playerDir```. 
+Copy the ```all_vehicles.example.JSON``` as ```all_vehicles.JSON``` and change the content as you see fit - most probably you may need to change the location of ```playerDir```. 
 
 ### Similar Cars Strategy
 
-Cars are installed under ```Vehicles``` in your rFactor2 installation folder.
+Cars are installed under ```Vehicles``` in your rFactor2 installation folder. Use the ```scope``` configuration to tweak this strategy:
 
 * ```SAME_VERSION_ONLY``` (default) 
   when ```SAME_VERSION_ONLY``` same cars are those having having the same version - i.e. when a new version is
   otherwise
 * ```IGNORE_VERSION``` ignore the version of the car, and apply last settings to all cars of same brand/type (gnoring its version). 
 
+## Issues 
+
+Please report issues on github, https://github.com/mattno/rf2-all_vehicles/issues.
+
 ## Executable 
 
-An executable is build which can be downloaded from assets.
+Not yet available.
 
 
