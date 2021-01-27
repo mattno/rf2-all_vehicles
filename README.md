@@ -14,7 +14,7 @@ Monitor the last driven car's settings and apply/copy those settings to the all 
 
 1. Download ```node``` and install (if you don't have  it installed already)
 2. Also download ```yarn```. (It might work with ```npm``` as well, just exchange ```yarn``` to ```npm``` below).
-2. Download (or fork) the source, i.e. having ```all_vehicles.js``` and place anywhere you like (ensure you have write permissions in this directory though).
+2. [Download](https://github.com/mattno/rf2-all_vehicles/archive/main.zip) (or fork) the sources,  having ```all_vehicles.js```, and place/unpack anywhere you like (ensure you have write permissions in this directory though, i.e. don't put it under Program Files).
 3. Open a command prompt and CD to the location of the script, and run 
 
    ```yarn install```
@@ -23,17 +23,21 @@ This downloads all dependencies needed, and you should able to run it.
 
 ## Usage
 
+### After rFactor 2 Exists
+
 After you exit rFactor 2 just run this script using ```yarn```  as
 
 ```yarn start```
 
 and all cars with the same type as the one last driven will be updated to use the same settings for mirrors and FFB multiplier.
 
-This means you must exit rFactor 2 before selecting a new car. To be able to go in and out from sessions with diffrent cars you can start as
+### Watch Driven Cars
+
+The above means you must exit rFactor 2 before selecting a new car. To be able to go in and out from sessions with diffrent cars, or other livery, you can start as
 
 ```yarn start --watch```
 
-which will watch when a new car is chosen, and add it to a queue. When rFactor 2 is ended, the settings of used cars will be applied.
+which will watch when a new car is chosen, and add it to a queue. When rFactor 2 is ended, the settings of used cars will be applied - in used order. Note, switiching livery without exiting the game in between will apply the latest driven livery to the rest of similar cars. So ensure the last driven car has your preferred settings.
 
 ### Configuration
 
@@ -51,23 +55,20 @@ Copy the ```all_vehicles.example.JSON``` as ```all_vehicles.JSON``` and change t
 
 #### Similar Cars Strategy
 
-Cars are installed under ```Vehicles``` in your rFactor2 installation folder. Use the ```scope``` configuration to tweak this strategy:
+Cars are identified by its name and version inside ```all_vehicles.ini```. Use the ```scope``` configuration to tweak whoch should be affected by this utility:
 
 * ```SAME_VERSION_ONLY``` (default) 
-  when ```SAME_VERSION_ONLY``` same cars are those having having the same version - i.e. when a new version is
-  otherwise
-* ```IGNORE_VERSION``` ignore the version of the car, and apply last settings to all cars of same brand/type (gnoring its version). 
+  when ```SAME_VERSION_ONLY``` same cars are those having having the same name and version - i.e. if you have a car where you are using multiple versions, only cars _of the same version_ is affected. 
+* ```IGNORE_VERSION``` ignore the version of the car, and apply settings to all cars of same brand/type (ignoring its version). 
 
 ### Applied History
 
-A history file, ```all_vehicles-history.JSON``` is used to track updated vehicles (no real use at the moment, only as log)
+A history file, ```all_vehicles-history.JSON```, in the same directory as the script, is used to track updated vehicles (no real use at the moment, only as log)
 
-## Issues 
+## Issues
 
 Please report issues on github, https://github.com/mattno/rf2-all_vehicles/issues.
 
 ## Executable 
 
 Not yet available.
-
-
