@@ -2,7 +2,7 @@
 
 Use last driven car to reuse mirror, and FFB multipler settings, for all other cars of same kind.
 
-## Bakground
+## Background
 
 Adjusting _mirrors_ and/or _FFB multiplier_ is only saved for the current vehicle/livery combination. I.e. when selecting the same car but a different livery you need to set the mirrors and FFB once again.
 
